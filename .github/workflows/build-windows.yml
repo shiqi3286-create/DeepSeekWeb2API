@@ -1,0 +1,41 @@
+name: Build Windows Client
+
+on:
+  workflow_dispatch:        # 手动触发：Actions 页面 → Run workflow
+  push:
+    tags: [ 'v*' ]          # 推送 v1.0.0 之类的 tag 时自动触发
+
+jobs:
+  build-win:
+    name: Build Windows (NSIS + Portable)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch bundled Node runtime
+        run: npm run app:fetch-node
+
+      - name: Build Windows installer & portable exe
+        run: npx electron-builder --win nsis portable --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-client
+          path: |
+            dist/*.exe
+            dist/*.blockmap
+            dist/latest.yml
+          if-no-files-found: error

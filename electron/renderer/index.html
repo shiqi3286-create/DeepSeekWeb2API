@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
+  <title>DeepSeekWeb2API 客户端</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <div>
+        <div class="title">DeepSeekWeb2API 客户端</div>
+        <div class="subtitle">DeepSeek 网页 → OpenAI 兼容 API</div>
+      </div>
+    </div>
+    <div id="status" class="status">未启动</div>
+  </header>
+
+  <section class="controls">
+    <button id="btn-start" class="btn primary">启动服务</button>
+    <button id="btn-stop" class="btn danger">停止服务</button>
+    <button id="btn-restart" class="btn">重启服务</button>
+    <span class="spacer"></span>
+    <button id="btn-login" class="btn">打开 DeepSeek 登录</button>
+    <button id="btn-login-done" class="btn ghost">完成登录</button>
+  </section>
+
+  <section class="cards">
+    <div class="card">
+      <div class="card-label">API 地址</div>
+      <div id="api-url" class="card-value mono">-</div>
+    </div>
+    <div class="card">
+      <div class="card-label">端口</div>
+      <div id="port" class="card-value mono">-</div>
+    </div>
+    <div class="card">
+      <div class="card-label">API Key</div>
+      <div id="apikey" class="card-value mono">-</div>
+    </div>
+    <div class="card">
+      <div class="card-label">节点</div>
+      <div id="node" class="card-value mono">-</div>
+    </div>
+  </section>
+
+  <section class="quick">
+    <button id="btn-open-api" class="btn small">打开 API 地址</button>
+    <button id="btn-open-login" class="btn small">打开登录页</button>
+    <button id="btn-config-dir" class="btn small">打开配置目录</button>
+    <button id="btn-config-file" class="btn small">编辑 config.json</button>
+  </section>
+
+  <section class="log-area">
+    <div class="log-header">
+      <span>运行日志</span>
+      <button id="btn-clear" class="btn tiny">清空</button>
+    </div>
+    <pre id="log" class="log" tabindex="0"></pre>
+  </section>
+
+  <footer class="foot" id="foot"></footer>
+
+  <script src="main.js"></script>
+</body>
+</html>

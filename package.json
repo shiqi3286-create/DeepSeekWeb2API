@@ -3,12 +3,66 @@
   "version": "0.1.0",
   "description": "Expose DeepSeek Web as an OpenAI-compatible API with text and image-input support.",
   "type": "module",
+  "main": "electron/main.cjs",
+  "author": {
+    "name": "DeepSeekWeb2API"
+  },
   "scripts": {
     "start": "node src/index.js",
-    "login": "node src/index.js --login"
+    "login": "node src/index.js --login",
+    "app:dev": "electron .",
+    "app:fetch-node": "node scripts/fetch-node.mjs",
+    "app:pack": "npm run app:fetch-node && electron-builder --win nsis portable",
+    "app:build": "electron-builder --win nsis portable"
   },
   "dependencies": {
     "playwright": "^1.57.0"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.deepseekweb2api.app",
+    "productName": "DeepSeekWeb2API",
+    "asar": false,
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*",
+      "src/**/*",
+      "config.json",
+      "00登录.bat",
+      "01启动.bat",
+      "02停止.bat",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build/node",
+        "to": "node",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "artifactName": "${productName}-${version}-win-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "shortcutName": "DeepSeekWeb2API"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-win-${arch}-portable.${ext}"
+    }
   },
   "engines": {
     "node": ">=20"
