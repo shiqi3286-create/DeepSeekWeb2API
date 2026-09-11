@@ -96,6 +96,20 @@ function emitState() {
   mainWindow.webContents.send('app:state', currentState());
 }
 
+function browserApiUrl(cfg, host, port) {
+  const configured = cfg?.server?.publicBaseUrl || `http://${host}:${port}`;
+  try {
+    const url = new URL(configured);
+    // 0.0.0.0 是监听用的通配地址，不能作为浏览器访问地址。
+    if (url.hostname === '0.0.0.0' || url.hostname === '::') {
+      url.hostname = '127.0.0.1';
+    }
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return `http://127.0.0.1:${port}`;
+  }
+}
+
 function currentState() {
   const cfg = readUserConfig();
   const port = cfg?.server?.port ?? 3000;
@@ -105,7 +119,7 @@ function currentState() {
     loginRunning: !!loginProc,
     port,
     host,
-    publicBaseUrl: cfg?.server?.publicBaseUrl || `http://${host}:${port}`,
+    publicBaseUrl: browserApiUrl(cfg, host, port),
     apiKeyConfigured: Boolean(cfg?.server?.apiKey),
     nodePath: nodeExe,
     configPath: configFile,
