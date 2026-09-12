@@ -97,6 +97,20 @@ body {
 
 .quick { display: flex; gap: 8px; flex-wrap: wrap; }
 
+.chat-area, .key-area {
+  border: 1px solid var(--border); border-radius: 10px; background: var(--panel); overflow: hidden;
+}
+.chat-messages { min-height: 90px; max-height: 180px; overflow: auto; padding: 10px 12px; }
+.chat-message { padding: 7px 10px; margin: 5px 0; border-radius: 8px; white-space: pre-wrap; word-break: break-word; }
+.chat-message.user { margin-left: 15%; background: #22345d; }
+.chat-message.assistant { margin-right: 15%; background: #253326; }
+.chat-message.error { background: #4a2023; color: #ffb4ae; }
+.chat-input-row { display: flex; gap: 8px; padding: 8px; border-top: 1px solid var(--border); }
+.chat-input-row textarea { flex: 1; min-height: 42px; resize: vertical; border: 1px solid var(--border); border-radius: 7px; background: #10131b; color: var(--text); padding: 8px; font: inherit; }
+.muted { color: var(--muted); font-size: 12px; }
+.key-list { padding: 8px 12px; }
+.key-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-family: Consolas, monospace; font-size: 12px; word-break: break-all; }
+
 /* 日志 */
 .log-area {
   flex: 1;

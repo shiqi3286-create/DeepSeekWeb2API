@@ -183,15 +183,39 @@ const detectedBrowser = configuredBrowserPath || configuredBrowserChannel !== 'a
   ? { name: '', executablePath: '' }
   : findBrowser(configuredBrowserPrefer);
 
+function normalizeApiKeys(serverConfig) {
+  const legacy = stringConfig('API_KEY', serverConfig?.apiKey, '');
+  const configured = Array.isArray(serverConfig?.apiKeys) ? serverConfig.apiKeys : [];
+  const keys = configured.filter(item => item && item.key).map(item => ({
+    id: String(item.id || `key-${item.key.slice(-8)}`),
+    name: String(item.name || 'API Key'),
+    key: String(item.key),
+    enabled: item.enabled !== false,
+    createdAt: item.createdAt || new Date().toISOString(),
+    lastUsedAt: item.lastUsedAt || null
+  }));
+  if (!keys.length && legacy) {
+    keys.push({ id: 'default', name: '默认', key: legacy, enabled: true, createdAt: new Date().toISOString(), lastUsedAt: null });
+  }
+  return keys;
+}
+
+const serverFileConfig = getValue(fileConfig, ['server'], {});
+const apiKeys = normalizeApiKeys(serverFileConfig);
+
 export const config = {
   rootDir,
   configPath,
-  port: intEnv('PORT', getValue(fileConfig, ['server', 'port'], undefined), 3000),
-  host: stringConfig('HOST', getValue(fileConfig, ['server', 'host'], undefined), '127.0.0.1'),
-  apiKey: stringConfig('API_KEY', getValue(fileConfig, ['server', 'apiKey'], undefined), ''),
-  publicBaseUrl: stringConfig('PUBLIC_BASE_URL', getValue(fileConfig, ['server', 'publicBaseUrl'], undefined), ''),
+  port: intEnv('PORT', serverFileConfig.port, 3000),
+  host: stringConfig('HOST', serverFileConfig.host, '127.0.0.1'),
+  apiKey: apiKeys.find(item => item.enabled)?.key || '',
+  apiKeys,
+  publicBaseUrl: stringConfig('PUBLIC_BASE_URL', serverFileConfig.publicBaseUrl, ''),
   targetUrl: stringConfig('DEEPSEEK_URL', getValue(fileConfig, ['deepseek', 'url'], undefined), 'https://chat.deepseek.com/'),
   userDataDir: path.resolve(process.env.USER_DATA_DIR || resolveProjectPath(getValue(fileConfig, ['paths', 'userDataDir'], undefined), 'data/user-data')),
+  sessionDir: path.resolve(process.env.SESSION_DIR || resolveProjectPath(getValue(fileConfig, ['paths', 'sessionDir'], undefined), 'data/sessions')),
+  sessionWriteBehindMs: intEnv('SESSION_WRITE_BEHIND_MS', getValue(fileConfig, ['session', 'writeBehindMs'], undefined), 200),
+  maxHistoryTurns: intEnv('MAX_HISTORY_TURNS', getValue(fileConfig, ['session', 'maxHistoryTurns'], undefined), 100),
   tempDir: path.resolve(process.env.TEMP_DIR || resolveProjectPath(getValue(fileConfig, ['paths', 'tempDir'], undefined), 'tmp')),
   headless: boolConfig('HEADLESS', browserFileConfig.headless, false),
   loginMode: boolEnv('DEEPSEEK_LOGIN', false) || process.argv.includes('--login'),
@@ -203,5 +227,7 @@ export const config = {
   browserChannel: configuredBrowserChannel === 'auto' ? '' : configuredBrowserChannel,
   browserExecutablePath: configuredBrowserPath ? path.resolve(rootDir, configuredBrowserPath) : detectedBrowser.executablePath,
   browserName: configuredBrowserPath ? 'custom' : (configuredBrowserChannel !== 'auto' ? configuredBrowserChannel : detectedBrowser.name),
+  browserStealth: boolConfig('BROWSER_STEALTH', browserFileConfig.stealth, false),
+  browserViewport: getValue(browserFileConfig, ['viewport'], { width: 1366, height: 900 }),
   models: Array.isArray(getValue(fileConfig, ['models'], [])) ? getValue(fileConfig, ['models'], []) : []
 };

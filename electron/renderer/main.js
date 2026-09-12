@@ -21,7 +21,14 @@
     btnOpenLogin: $('btn-open-login'),
     btnConfigDir: $('btn-config-dir'),
     btnConfigFile: $('btn-config-file'),
-    btnClear: $('btn-clear')
+    btnClear: $('btn-clear'),
+    chatInput: $('chat-input'),
+    chatMessages: $('chat-messages'),
+    chatSend: $('btn-chat-send'),
+    chatState: $('chat-state'),
+    keyCreate: $('btn-key-create'),
+    keyList: $('key-list'),
+    selfCheck: $('btn-self-check')
   };
 
   function appendLine(text, cls) {
@@ -70,7 +77,50 @@
     el.foot.textContent = `版本 ${s.version}  ·  配置文件 ${s.configPath}`;
   }
 
+  function appendChat(role, content) {
+    const item = document.createElement('div');
+    item.className = `chat-message ${role}`;
+    item.textContent = content;
+    el.chatMessages.appendChild(item);
+    el.chatMessages.scrollTop = el.chatMessages.scrollHeight;
+    return item;
+  }
+  async function sendChat() {
+    const text = el.chatInput.value.trim();
+    if (!text) return;
+    el.chatInput.value = '';
+    appendChat('user', text);
+    el.chatState.textContent = '生成中…';
+    el.chatSend.disabled = true;
+    try {
+      const result = await window.desktop.chatSend({ model: 'deepseek', messages: [{ role: 'user', content: text }] });
+      const content = result?.choices?.[0]?.message?.content || JSON.stringify(result);
+      appendChat('assistant', content);
+    } catch (err) {
+      appendChat('error', `错误：${err.message}`);
+    } finally {
+      el.chatState.textContent = '无需 API Key';
+      el.chatSend.disabled = false;
+    }
+  }
+  function renderKeys(keys) {
+    el.keyList.textContent = '';
+    for (const key of keys || []) {
+      const row = document.createElement('div'); row.className = 'key-row';
+      row.textContent = `${key.name || key.id}: ${key.key} ${key.enabled === false ? '(已禁用)' : ''}`;
+      const copy = document.createElement('button'); copy.className = 'btn tiny'; copy.textContent = '复制';
+      copy.onclick = () => navigator.clipboard?.writeText(key.key);
+      row.appendChild(copy); el.keyList.appendChild(row);
+    }
+  }
+  async function loadKeys() { renderKeys(await window.desktop.apiKeys()); }
+
   function bind() {
+    el.chatSend.addEventListener('click', sendChat);
+    el.chatInput.addEventListener('keydown', event => { if (event.ctrlKey && event.key === 'Enter') sendChat(); });
+    el.keyCreate.addEventListener('click', async () => { await window.desktop.apiKeyCreate('新 Key'); await loadKeys(); });
+    el.selfCheck.addEventListener('click', async () => { const result = await window.desktop.selfCheck(); result.forEach(item => appendLine(`[自检] ${item.name}: ${item.ok ? '通过' : '失败'}`, item.ok ? 'l-info' : 'l-error')); });
+
     el.btnStart.addEventListener('click', () => window.desktop.start());
     el.btnStop.addEventListener('click', () => window.desktop.stop());
     el.btnRestart.addEventListener('click', () => window.desktop.restart());
@@ -94,6 +144,7 @@
     bind();
     appendLine('客户端已就绪，请先完成 DeepSeek 登录，再启动服务。', 'l-app');
     window.desktop.getState().then(renderState);
+    loadKeys().catch(() => {});
   }
 
   if (document.readyState === 'loading') {

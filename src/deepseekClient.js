@@ -1,7 +1,7 @@
 ﻿import fs from 'node:fs/promises';
-import { chromium } from 'playwright';
 import { ApiError } from './http.js';
 import { logger } from './logger.js';
+import { launchPersistentContext } from './browser.js';
 
 const INPUT_SELECTOR = 'textarea, [contenteditable="true"]';
 const SEND_BUTTON_NAMES = /send|发送|提交/i;
@@ -25,12 +25,13 @@ export class DeepSeekClient {
     await fs.mkdir(this.config.userDataDir, { recursive: true });
     const launchOptions = {
       headless: this.config.headless,
-      viewport: { width: 1366, height: 900 }
+      viewport: this.config.browserViewport || { width: 1366, height: 900 },
+      stealth: this.config.browserStealth === true
     };
     if (this.config.browserChannel) launchOptions.channel = this.config.browserChannel;
     if (this.config.browserExecutablePath) launchOptions.executablePath = this.config.browserExecutablePath;
 
-    this.context = await chromium.launchPersistentContext(this.config.userDataDir, launchOptions);
+    this.context = await launchPersistentContext(this.config.userDataDir, launchOptions);
     this.page = this.context.pages()[0] || await this.context.newPage();
     this.page.setDefaultTimeout(30000);
     this.page.setDefaultNavigationTimeout(60000);

@@ -591,7 +591,56 @@ Authorization: Bearer sk-local
 7. 增加单元测试和 API 集成测试。
 8. 为 DeepSeek DOM 选择器增加版本化和诊断页面。
 
-## 14. 版本发布流程
+## 14. V2 双入口与内置聊天
+
+V2 在保留 V1 API 服务的基础上增加了 Electron 内置聊天入口。内置聊天通过 IPC 调用本地 API 服务，不需要用户手动填写 API Key；外部工具仍使用 OpenAI 兼容接口和本地 `sk-` Key。
+
+内置聊天使用方式：
+
+1. 完成 DeepSeek 网页登录。
+2. 点击“启动服务”。
+3. 在“内置聊天”区域输入消息并发送。
+4. 内置聊天与外部 API 共用本地服务、浏览器登录态和串行队列。
+
+V2 新增模块：
+
+- `src/sessionStore.js`：按 API Key 哈希保存 JSON 会话。
+- `src/promptBuilder.js`：保留 system、assistant tool_calls 和 tool 结果轨迹。
+- `src/toolBridge.js`：将网页文本翻译为标准 OpenAI `tool_calls`，不执行本地工具。
+- `src/service.js`：统一 HTTP 和 Electron 请求使用的服务层。
+- `src/browser.js`：可选 stealth 浏览器启动封装。
+- `src/selectors.json`：自适应选择器候选配置。
+
+### V2 API Key
+
+V2 支持多个本地 API Key。每个 Key 可以独立启用、禁用、重新生成和删除。兼容 V1 的 `server.apiKey` 配置，首次读取时会迁移成 `server.apiKeys[0]`。
+
+接受以下请求头：
+
+```http
+Authorization: Bearer sk-xxx
+api-key: sk-xxx
+x-api-key: sk-xxx
+```
+
+这些 Key 是本地服务访问密码，不是 DeepSeek 官方 API Key。
+
+### V2 工具调用
+
+外部客户端可以发送 OpenAI `tools` 和 `tool_choice`。服务会把工具定义加入给 DeepSeek 网页的提示词，并尝试从网页回答中解析工具调用，返回标准 `tool_calls` 和 `finish_reason: "tool_calls"`。
+
+服务只负责返回 `tool_calls`，不会读取文件、执行命令或控制本地电脑。后续动作由 Cursor、Cline 等外部工具负责。
+
+### V2 验证命令
+
+```bash
+npm test
+node test/smoke-v2.mjs
+```
+
+冒烟测试只验证 `/health` 和 `/v1/models`，不会访问 DeepSeek 或消耗登录态。
+
+## 15. 版本发布流程
 
 ```bash
 # 1. 修改代码并本地验证

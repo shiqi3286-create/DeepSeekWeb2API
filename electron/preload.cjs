@@ -12,6 +12,16 @@ contextBridge.exposeInMainWorld('desktop', {
   openLoginPage: () => ipcRenderer.invoke('app:openLoginPage'),
   openConfigDir: () => ipcRenderer.invoke('app:openConfigDir'),
   openConfigFile: () => ipcRenderer.invoke('app:openConfigFile'),
+  chatSend: body => ipcRenderer.invoke('chat:send', body),
+  chatCancel: () => ipcRenderer.invoke('chat:cancel'),
+  apiKeys: () => ipcRenderer.invoke('apikey:list'),
+  apiKeyCreate: name => ipcRenderer.invoke('apikey:create', name),
+  apiKeyRegenerate: id => ipcRenderer.invoke('apikey:regenerate', id),
+  apiKeyDelete: id => ipcRenderer.invoke('apikey:delete', id),
+  apiKeySetEnabled: (id, enabled) => ipcRenderer.invoke('apikey:setEnabled', id, enabled),
+  sessions: () => ipcRenderer.invoke('session:list'),
+  sessionDelete: (id, deleteWeb) => ipcRenderer.invoke('session:delete', id, deleteWeb),
+  selfCheck: () => ipcRenderer.invoke('selfCheck:run'),
 
   onLog: cb => {
     const listener = (_event, line) => cb(line);

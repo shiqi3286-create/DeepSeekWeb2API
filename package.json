@@ -1,6 +1,6 @@
 {
   "name": "deepseek-web-2api",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Expose DeepSeek Web as an OpenAI-compatible API with text and image-input support.",
   "type": "module",
   "main": "electron/main.cjs",
@@ -10,6 +10,7 @@
   "scripts": {
     "start": "node src/index.js",
     "login": "node src/index.js --login",
+    "test": "node --test test/*.test.js",
     "app:dev": "electron .",
     "app:icon": "node scripts/gen-icon.cjs",
     "app:fetch-node": "node scripts/fetch-node.mjs",
@@ -17,7 +18,9 @@
     "app:build": "electron-builder --win nsis portable"
   },
   "dependencies": {
-    "playwright": "^1.57.0"
+    "playwright": "^1.57.0",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
   },
   "devDependencies": {
     "electron": "^33.2.0",

@@ -1,8 +1,18 @@
 {
   "server": {
-    "host": "0.0.0.0",
+    "host": "127.0.0.1",
     "port": 3000,
     "apiKey": "sk-local",
+    "apiKeys": [
+      {
+        "id": "default",
+        "name": "默认",
+        "key": "sk-local",
+        "enabled": true,
+        "createdAt": "2026-09-11T00:00:00.000Z",
+        "lastUsedAt": null
+      }
+    ],
     "publicBaseUrl": "http://127.0.0.1:3000"
   },
   "deepseek": {
@@ -12,12 +22,23 @@
     "headless": false,
     "channel": "auto",
     "prefer": "default",
-    "executablePath": ""
+    "executablePath": "",
+    "stealth": true,
+    "viewport": { "width": 1440, "height": 900 }
   },
   "paths": {
     "userDataDir": "data/user-data",
-    "tempDir": "tmp"
+    "tempDir": "tmp",
+    "sessionDir": "data/sessions"
   },
+  "session": {
+    "persist": true,
+    "historyWindow": 20,
+    "maxHistoryTurns": 100,
+    "deleteWebSessionOnRemove": true,
+    "writeBehindMs": 200
+  },
+  "log": { "redact": false },
   "limits": {
     "requestTimeoutMs": 180000,
     "uploadTimeoutMs": 90000,

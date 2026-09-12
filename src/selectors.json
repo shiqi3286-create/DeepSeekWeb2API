@@ -1,0 +1,22 @@
+{
+  "input": {
+    "primary": "textarea, [contenteditable=\"true\"]",
+    "fallbacks": [
+      { "type": "role", "value": "textbox" },
+      { "type": "css", "value": "textarea" }
+    ]
+  },
+  "send": {
+    "primary": "div.ds-button--primary",
+    "fallbacks": [
+      { "type": "css", "value": "button[data-testid*=\"send\" i]" },
+      { "type": "role", "value": "button", "name": "发送" }
+    ]
+  },
+  "upload": {
+    "fallbacks": [
+      { "type": "css", "value": "button[aria-label*=\"Attach\" i]" },
+      { "type": "css", "value": "input[type=\"file\"]" }
+    ]
+  }
+}

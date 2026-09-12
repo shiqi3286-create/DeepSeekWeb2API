@@ -51,6 +51,21 @@
     <button id="btn-open-login" class="btn small">打开登录页</button>
     <button id="btn-config-dir" class="btn small">打开配置目录</button>
     <button id="btn-config-file" class="btn small">编辑 config.json</button>
+    <button id="btn-self-check" class="btn small">一键自检</button>
+  </section>
+
+  <section class="chat-area">
+    <div class="log-header"><span>内置聊天</span><span id="chat-state" class="muted">无需 API Key</span></div>
+    <div id="chat-messages" class="chat-messages"></div>
+    <div class="chat-input-row">
+      <textarea id="chat-input" placeholder="输入消息，按 Ctrl+Enter 发送"></textarea>
+      <button id="btn-chat-send" class="btn primary">发送</button>
+    </div>
+  </section>
+
+  <section class="key-area">
+    <div class="log-header"><span>API Key</span><button id="btn-key-create" class="btn tiny">生成 Key</button></div>
+    <div id="key-list" class="key-list"></div>
   </section>
 
   <section class="log-area">

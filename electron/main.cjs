@@ -6,6 +6,8 @@
 const path = require('node:path');
 const fs = require('node:fs');
 const { spawn } = require('node:child_process');
+const { randomBytes } = require('node:crypto');
+const { request: httpRequest } = require('node:http');
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 
 const isPackaged = app.isPackaged;
@@ -26,7 +28,8 @@ const configFile = path.join(userDataRoot, 'config.json');
 const serverEnv = {
   CONFIG_PATH: configFile,
   USER_DATA_DIR: path.join(userDataRoot, 'data', 'user-data'),
-  TEMP_DIR: path.join(userDataRoot, 'tmp')
+  TEMP_DIR: path.join(userDataRoot, 'tmp'),
+  SESSION_DIR: path.join(userDataRoot, 'data', 'sessions')
 };
 
 // 首次运行：把内置 config.json 模板复制到可写用户目录
@@ -114,13 +117,15 @@ function currentState() {
   const cfg = readUserConfig();
   const port = cfg?.server?.port ?? 3000;
   const host = cfg?.server?.host ?? '127.0.0.1';
+  const apiKeys = Array.isArray(cfg?.server?.apiKeys) ? cfg.server.apiKeys : (cfg?.server?.apiKey ? [{ id: 'default', name: '默认', key: cfg.server.apiKey, enabled: true }] : []);
   return {
     serverRunning: !!serverProc,
     loginRunning: !!loginProc,
     port,
     host,
     publicBaseUrl: browserApiUrl(cfg, host, port),
-    apiKeyConfigured: Boolean(cfg?.server?.apiKey),
+    apiKeyConfigured: apiKeys.some(item => item.enabled !== false && item.key),
+    apiKeys,
     nodePath: nodeExe,
     configPath: configFile,
     userDataDir: serverEnv.USER_DATA_DIR,
@@ -212,12 +217,45 @@ function finishLogin() {
   return currentState();
 }
 
+function writeUserConfig(cfg) {
+  fs.writeFileSync(configFile, JSON.stringify(cfg, null, 2), 'utf8');
+}
+function updateApiKeys(mutator) {
+  const cfg = readUserConfig();
+  cfg.server = cfg.server || {};
+  if (!Array.isArray(cfg.server.apiKeys)) {
+    cfg.server.apiKeys = cfg.server.apiKey ? [{ id: 'default', name: '默认', key: cfg.server.apiKey, enabled: true, createdAt: new Date().toISOString(), lastUsedAt: null }] : [];
+  }
+  mutator(cfg.server.apiKeys);
+  cfg.server.apiKey = cfg.server.apiKeys.find(item => item.enabled !== false)?.key || '';
+  writeUserConfig(cfg);
+  return currentState();
+}
+function apiKeyView(item) {
+  return { ...item, key: item.key };
+}
+
+async function selfCheck() {
+  const s = currentState();
+  const checks = [];
+  checks.push({ name: '服务进程', ok: s.serverRunning });
+  if (s.serverRunning) {
+    const health = await new Promise(resolve => {
+      const req = httpRequest(`http://127.0.0.1:${s.port}/health`, res => { let body = ''; res.on('data', c => body += c); res.on('end', () => resolve({ ok: res.statusCode === 200, body })); });
+      req.on('error', error => resolve({ ok: false, error: error.message })); req.setTimeout(3000, () => { req.destroy(); resolve({ ok: false, error: 'timeout' }); });
+    });
+    checks.push({ name: '健康检查', ...health });
+  }
+  return checks;
+}
+
 function shutdown() {
   try { serverProc?.kill(); } catch { /* ignore */ }
   try { loginProc?.kill(); } catch { /* ignore */ }
   serverProc = null;
   loginProc = null;
 }
+
 
 // ---- 窗口 ----------------------------------------------------------------
 function createWindow() {
@@ -267,6 +305,48 @@ ipcMain.handle('app:openConfigFile', async () => {
   await shell.openPath(configFile);
   return currentState();
 });
+
+ipcMain.handle('apikey:list', () => currentState().apiKeys);
+ipcMain.handle('apikey:create', (_event, name = '新 Key') => updateApiKeys(keys => {
+  keys.push({ id: `key-${Date.now()}`, name: String(name || '新 Key'), key: `sk-${randomBytes(24).toString('hex')}`, enabled: true, createdAt: new Date().toISOString(), lastUsedAt: null });
+}));
+ipcMain.handle('apikey:regenerate', (_event, id) => updateApiKeys(keys => {
+  const item = keys.find(key => key.id === id);
+  if (item) item.key = `sk-${randomBytes(24).toString('hex')}`;
+}));
+ipcMain.handle('apikey:delete', (_event, id) => updateApiKeys(keys => {
+  const index = keys.findIndex(key => key.id === id);
+  if (index >= 0) keys.splice(index, 1);
+}));
+ipcMain.handle('apikey:setEnabled', (_event, id, enabled) => updateApiKeys(keys => {
+  const item = keys.find(key => key.id === id);
+  if (item) item.enabled = Boolean(enabled);
+}));
+ipcMain.handle('session:list', async () => {
+  const sessionDir = path.join(userDataRoot, 'data', 'sessions');
+  const names = fs.existsSync(sessionDir) ? fs.readdirSync(sessionDir).filter(name => name.endsWith('.json')) : [];
+  return names.map(name => {
+    try { return { id: name.replace(/\.json$/, ''), ...JSON.parse(fs.readFileSync(path.join(sessionDir, name), 'utf8')) }; } catch { return { id: name.replace(/\.json$/, ''), invalid: true }; }
+  });
+});
+ipcMain.handle('session:delete', async (_event, id) => {
+  await fs.promises.rm(path.join(userDataRoot, 'data', 'sessions', `${id}.json`), { force: true });
+  return true;
+});
+ipcMain.handle('selfCheck:run', () => selfCheck());
+ipcMain.handle('chat:send', async (_event, body) => {
+  const s = currentState();
+  if (!s.serverRunning) throw new Error('服务尚未启动');
+  const key = s.apiKeys.find(item => item.enabled !== false)?.key || '';
+  return new Promise((resolve, reject) => {
+    const payload = JSON.stringify(body || {});
+    const req = httpRequest(`http://127.0.0.1:${s.port}/v1/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload), Authorization: `Bearer ${key}` } }, res => {
+      let data = ''; res.setEncoding('utf8'); res.on('data', chunk => data += chunk); res.on('end', () => { try { const result = JSON.parse(data); if (res.statusCode >= 400) reject(new Error(result?.error?.message || data)); else resolve(result); } catch { reject(new Error(data || '响应解析失败')); } });
+    });
+    req.on('error', reject); req.write(payload); req.end();
+  });
+});
+ipcMain.handle('chat:cancel', () => false);
 
 // ---- 生命周期 ------------------------------------------------------------
 const gotLock = app.requestSingleInstanceLock();
